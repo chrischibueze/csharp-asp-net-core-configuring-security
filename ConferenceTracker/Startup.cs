@@ -16,42 +16,52 @@ namespace ConferenceTracker
     public class Startup
     {
         private readonly string _allowedOrigins = "_allowedOrigins";
-        private readonly ILogger<Startup> _logger;
-        public Startup(IConfiguration configuration, ILogger<Startup> logger)
+        private readonly ILogger<Startup> logger;
+        public Startup(IConfiguration configuration)
+
         {
-            _logger = logger;
+
             Configuration = configuration;
+
         }
 
         public IConfiguration Configuration { get; }
         public string SecretMessage { get; set; }
 
 
+
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase(Configuration["SecretMessage"]));
+            services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase("ConferenceTracker"));
             services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
                 .AddEntityFrameworkStores<ApplicationDbContext>();
+
+            services.Configure<CookiePolicyOptions>(options => { options.CheckConsentNeeded = context => true; options.MinimumSameSitePolicy = SameSiteMode.None; });
+
             services.AddControllersWithViews();
             services.AddRazorPages();
+
             services.AddCors(options =>
             {
                 options.AddPolicy(_allowedOrigins,
                     builder => { builder.WithOrigins("http://pluralsight.com"); });
             });
+            SecretMessage = Configuration["SecretMessage"];
+
             services.AddTransient<IPresentationRepository, PresentationRepository>();
             services.AddTransient<ISpeakerRepository, SpeakerRepository>();
+
         }
 
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILogger<Startup> logger)
         {
 
             if (env.IsDevelopment())
             {
-                _logger.LogInformation("Environment is in development");
+                logger.LogInformation("Environment is in development");
                 app.UseDeveloperExceptionPage();
                 app.UseDatabaseErrorPage();
             }
@@ -70,6 +80,7 @@ namespace ConferenceTracker
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
+            app.UseCookiePolicy();
 
             app.UseRouting();
 
